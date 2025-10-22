@@ -1,4 +1,3 @@
-// === Bestand: pages/api/webhook-mollie.js ===
 import mollieClient from '@mollie/api-client';
 const mollie = mollieClient({ apiKey: process.env.MOLLIE_API_KEY });
 
@@ -6,27 +5,25 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const paymentId = req.body.id;
-
   if (!paymentId) {
-    console.error('❌ Webhook zonder payment ID ontvangen');
+    console.error('❌ Webhook zonder payment ID');
     return res.status(400).end();
   }
 
   try {
     const payment = await mollie.payments.get(paymentId);
-
     console.log('✅ Webhook ontvangen voor betaling:', payment.id);
-    console.log('Metadata:', payment.metadata);
+    console.log('ℹ️ Metadata:', payment.metadata);
+    console.log('ℹ️ Sequence type:', payment.sequenceType);
+    console.log('ℹ️ Betaald:', payment.status);
 
-    // ✔️ Check of betaling succesvol is én dit de eerste in een reeks is
-    if (payment.isPaid && payment.sequenceType === 'first') {
-      const { producten, email, name, totaal } = payment.metadata || {};
+    const { producten, email, name, totaal } = payment.metadata || {};
 
-      if (!producten || !email || !totaal) {
-        console.warn('⚠️ Onvolledige metadata bij betaling ID:', payment.id);
-        return res.status(200).end();
-      }
-
+    if (
+      payment.sequenceType === 'first' &&
+      payment.status === 'paid' &&
+      producten && email && name && totaal
+    ) {
       await mollie.customers_subscriptions.create({
         customerId: payment.customerId,
         amount: {
@@ -39,7 +36,7 @@ export default async function handler(req, res) {
         metadata: { email, producten },
       });
 
-      console.log('✅ Subscription succesvol aangemaakt voor:', email);
+      console.log(`✅ Subscription aangemaakt voor ${email}`);
     } else {
       console.log('ℹ️ Geen subscription aangemaakt — betaling niet betaald of geen eerste betaling');
     }
