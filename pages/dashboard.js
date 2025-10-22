@@ -10,6 +10,7 @@ export default function Dashboard() {
     { id: 'RAINBOW_MIX', name: 'RAINBOW MIX', price: 18.84 },
     { id: 'HEALTHY_CHOICE', name: 'HEALTHY CHOICE', price: 18.84 },
     { id: 'FRUITFULL_COMBI', name: 'FRUITFULL COMBI', price: 18.84 },
+    { id: 'FITNESS_BOX', name: 'FITNESS BOX', price: 18.84 },
   ];
 
   const toggleProduct = (product) => {
