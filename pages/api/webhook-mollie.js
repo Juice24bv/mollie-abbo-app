@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     console.log('Webhook ontvangen voor betaling:', payment.id);
     console.log('Metadata:', payment.metadata);
 
-    if (payment.isPaid() && payment.sequenceType === 'first') {
+   if (!payment.isPaid) { && payment.sequenceType === 'first') {
       const { producten, email, name, totaal } = payment.metadata || {};
 
       if (!producten || !email || !totaal) {
