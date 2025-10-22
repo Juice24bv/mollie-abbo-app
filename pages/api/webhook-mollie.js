@@ -17,7 +17,8 @@ export default async function handler(req, res) {
     console.log('Webhook ontvangen voor betaling:', payment.id);
     console.log('Metadata:', payment.metadata);
 
-   if (!payment.isPaid) { && payment.sequenceType === 'first') {
+    // ✅ Let op: .isPaid is een boolean property, GEEN functie
+    if (payment.isPaid && payment.sequenceType === 'first') {
       const { producten, email, name, totaal } = payment.metadata || {};
 
       if (!producten || !email || !totaal) {
@@ -32,7 +33,7 @@ export default async function handler(req, res) {
           value: parseFloat(totaal).toFixed(2),
         },
         interval: '1 month',
-        description: `Abonnement: ${producten.map(p => p.name).join(', ')}`,
+        description: `Abonnement: ${producten.map((p) => p.name).join(', ')}`,
         webhookUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhook-mollie`,
         metadata: { email, producten },
       });
