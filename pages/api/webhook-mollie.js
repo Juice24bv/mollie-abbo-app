@@ -18,7 +18,7 @@ export default async function handler(req, res) {
         amount: { currency: 'EUR', value: parseFloat(totaal).toFixed(2) },
         interval: '1 month',
         description: `Abonnement: ${producten.map(p => p.name).join(', ')}`,
-        webhookUrl: \`\${process.env.NEXT_PUBLIC_BASE_URL}/api/webhook-mollie\`,
+        webhookUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhook-mollie`,
         metadata: { email, producten },
       });
 
