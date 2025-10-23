@@ -6,7 +6,12 @@ export default async function handler(req, res) {
 
   const { name, email, producten, totaal } = req.body;
 
-  if (!producten || !email || !name || !totaal) {
+  if (
+    !Array.isArray(producten) || 
+    !email || 
+    !name || 
+    isNaN(Number(totaal))
+  ) {
     return res.status(400).json({ error: 'Ongeldige invoer' });
   }
 
@@ -14,7 +19,7 @@ export default async function handler(req, res) {
     const customer = await mollie.customers.create({ name, email });
 
     const payment = await mollie.payments.create({
-      amount: { currency: 'EUR', value: totaal.toFixed(2) },
+      amount: { currency: 'EUR', value: Number(totaal).toFixed(2) },
       customerId: customer.id,
       sequenceType: 'first',
       method: 'ideal',
