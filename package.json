@@ -12,4 +12,10 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   }
+"devDependencies": {
+  "tailwindcss": "^3.x",
+  "postcss": "^8.x",
+  "autoprefixer": "^10.x"
+}
+
 }
