@@ -1,67 +1,59 @@
-// webhook.js
+// pages/api/webhook-mollie.js
 import mollieClient from '@mollie/api-client';
-import moment from 'moment';
-import express from 'express';
 
 const mollie = mollieClient({ apiKey: process.env.MOLLIE_API_KEY });
-const app = express();
-app.use(express.json());
 
-// ✅ Webhook endpoint
-app.post('/webhook', async (req, res) => {
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).end();
+
   try {
     const paymentId = req.body.id;
     console.log(`➡️ Webhook ontvangen voor betaling: ${paymentId}`);
 
-    // Altijd actuele status ophalen (webhook is niet betrouwbaar qua timing)
+    // Altijd actuele status ophalen
     const payment = await mollie.payments.get(paymentId);
 
-    // Debug info
     console.log('Betalingsstatus:', payment.status);
     console.log('CustomerId:', payment.customerId);
     console.log('MandateId:', payment.mandateId);
-    console.log('Metadata:', payment.metadata);
 
-    // Alleen doorgaan bij succesvolle betaling
     if (payment.status !== 'paid') {
-      console.log('❌ Betaling nog niet afgerond — abonnement niet aangemaakt.');
-      return res.sendStatus(200);
+      console.log('❌ Betaling niet afgerond — geen abonnement aangemaakt.');
+      return res.status(200).end();
     }
 
-    // Controleren of klant en mandate bestaan
     if (!payment.customerId || !payment.mandateId) {
-      console.log('⚠️ Geen klant of mandate gevonden — kan geen abonnement aanmaken.');
-      return res.sendStatus(200);
+      console.log('⚠️ Geen klant of mandate gevonden — geen abonnement aangemaakt.');
+      return res.status(200).end();
     }
 
-    // Metadata uitlezen
     const producten = payment.metadata?.producten || [];
-    const klantEmail = payment.metadata?.email;
-    const klantNaam = payment.metadata?.name;
-    const totaal = payment.metadata?.totaal;
+    const klantNaam = payment.metadata?.name || 'klant';
+    const totaal = payment.metadata?.totaal || 0;
 
-    // ✅ Maak abonnement aan met startdatum 7 dagen na vandaag
-    const startDate = moment().add(7, 'days').format('YYYY-MM-DD');
+    // Bereken startdatum +7 dagen (zonder moment.js)
+    const startDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split('T')[0];
 
+    // ✅ Abonnement aanmaken
     const subscription = await mollie.customers_subscriptions.create({
       customerId: payment.customerId,
       amount: {
         value: totaal.toFixed(2),
-        currency: 'EUR'
+        currency: 'EUR',
       },
       interval: '7 days',
       startDate,
-      description: `Abonnement voor ${klantNaam || 'klant'}`,
+      description: `Abonnement voor ${klantNaam}`,
       mandateId: payment.mandateId,
-      metadata: { producten }
+      metadata: { producten },
     });
 
     console.log(`✅ Abonnement aangemaakt: ${subscription.id}, start op ${startDate}`);
-    return res.sendStatus(200);
+    return res.status(200).end();
   } catch (err) {
     console.error('💥 Fout bij webhook-verwerking:', err);
-    res.sendStatus(500);
+    return res.status(500).end();
   }
-});
-
-app.listen(3000, () => console.log('Webhook-server draait op poort 3000'));
+}
