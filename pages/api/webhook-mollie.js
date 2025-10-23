@@ -1,5 +1,5 @@
-// pages/api/webhook-mollie.js
 import mollieClient from '@mollie/api-client';
+
 const mollie = mollieClient({ apiKey: process.env.MOLLIE_API_KEY });
 
 export default async function handler(req, res) {
@@ -14,21 +14,19 @@ export default async function handler(req, res) {
     console.log('Betalingsstatus:', payment.status);
     console.log('CustomerId:', payment.customerId);
     console.log('MandateId:', payment.mandateId);
-    console.log('SequenceType:', payment.sequenceType);
 
-    if (payment.status !== 'paid' || payment.sequenceType !== 'first') {
-      console.log('❌ Geen geldige initiële betaling — abonnement wordt niet aangemaakt.');
+    if (payment.status !== 'paid') {
+      console.log('❌ Betaling niet afgerond — geen abonnement aangemaakt.');
       return res.status(200).end();
     }
 
     if (!payment.customerId || !payment.mandateId) {
-      console.log('⚠️ Geen klant of mandate gevonden.');
+      console.log('⚠️ Geen klant of mandate gevonden — geen abonnement aangemaakt.');
       return res.status(200).end();
     }
 
-    const producten = payment.metadata?.producten || [];
-    const klantNaam = payment.metadata?.name || 'klant';
-    const totaal = parseFloat(payment.metadata?.totaal || 0);
+    const { producten, name, totaal, ip, timestamp } = payment.metadata || {};
+    const klantNaam = name || 'klant';
 
     const startDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
       .toISOString()
@@ -40,14 +38,16 @@ export default async function handler(req, res) {
         value: totaal.toFixed(2),
         currency: 'EUR',
       },
-      interval: '1 month', // of '7 days' afhankelijk van jouw model
+      interval: '7 days',
       startDate,
       description: `Abonnement voor ${klantNaam}`,
       mandateId: payment.mandateId,
-      metadata: { producten },
+      metadata: { producten, ip, timestamp }
     });
 
     console.log(`✅ Abonnement aangemaakt: ${subscription.id}, start op ${startDate}`);
+    console.log(`📌 SEPA toestemming vastgelegd — IP: ${ip}, Tijd: ${timestamp}`);
+
     return res.status(200).end();
   } catch (err) {
     console.error('💥 Fout bij webhook-verwerking:', err);
