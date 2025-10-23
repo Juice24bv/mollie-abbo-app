@@ -1,50 +1,101 @@
-import mollieClient from '@mollie/api-client';
-const mollie = mollieClient({ apiKey: process.env.MOLLIE_API_KEY });
+import { useState } from 'react';
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
+const productenLijst = [
+  { id: 'RAINBOW_MIX', name: 'Rainbow Mix', price: 18.84 },
+  { id: 'FRUITFULL_COMBI', name: 'Fruitfull Combi', price: 18.84 },
+  { id: 'HEALTHY_CHOICE', name: 'Healthy Choice', price: 18.84 },
+  { id: 'IMMUNE_BOOST', name: 'Immune Boost', price: 18.84 },
+];
 
-  const { name, email, producten } = req.body;
+export default function Dashboard() {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    producten: [],
+  });
 
-  if (!name || !email || !producten || !Array.isArray(producten) || producten.length === 0) {
-    return res.status(400).json({ error: 'Ongeldige of ontbrekende invoer' });
-  }
+  const toggleProduct = (product) => {
+    const exists = formData.producten.find((p) => p.id === product.id);
+    const nieuweProducten = exists
+      ? formData.producten.filter((p) => p.id !== product.id)
+      : [...formData.producten, product];
 
-  // Prijs per product (bijv. €18,84) — aangepast aan jouw producten
-  const prijsPerStuk = 18.84;
+    setFormData({ ...formData, producten: nieuweProducten });
+  };
 
-  const totaal = prijsPerStuk * producten.length;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  try {
-    const customer = await mollie.customers.create({ name, email });
+    const totaal = formData.producten.reduce(
+      (acc, p) => acc + p.price * (p.quantity || 1),
+      0
+    );
 
-    const payment = await mollie.payments.create({
-      amount: {
-        currency: 'EUR',
-        value: totaal.toFixed(2)
-      },
-      customerId: customer.id,
-      sequenceType: 'first',
-      method: 'ideal',
-      description: `Abonnement: ${producten.join(', ')}`,
-      redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/confirmed`,
-      webhookUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhook-mollie`,
-      metadata: {
-        producten: producten.map(p => ({
-          id: p,
-          name: p,
-          price: prijsPerStuk,
-          quantity: 1
-        })),
-        email,
-        name,
-        totaal
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          totaal,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else {
+        alert('Fout bij aanmaken betaling.');
       }
-    });
+    } catch (err) {
+      console.error(err);
+      alert('Er is iets misgegaan.');
+    }
+  };
 
-    res.status(200).json({ checkoutUrl: payment.getCheckoutUrl() });
-  } catch (error) {
-    console.error('Mollie API fout:', error);
-    res.status(500).json({ error: 'Fout bij aanmaken betaling' });
-  }
+  return (
+    <div className="max-w-xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-4">Abonnement kiezen</h1>
+      <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded shadow">
+        <input
+          type="text"
+          placeholder="Naam"
+          className="w-full border p-2 rounded"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          required
+        />
+        <input
+          type="email"
+          placeholder="E-mailadres"
+          className="w-full border p-2 rounded"
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          required
+        />
+
+        <div className="space-y-2">
+          {productenLijst.map((product) => (
+            <label key={product.id} className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={formData.producten.some((p) => p.id === product.id)}
+                onChange={() => toggleProduct(product)}
+              />
+              <span>
+                {product.name} – €{product.price.toFixed(2)}
+              </span>
+            </label>
+          ))}
+        </div>
+
+        <button
+          type="submit"
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+        >
+          Start betaling
+        </button>
+      </form>
+    </div>
+  );
 }
