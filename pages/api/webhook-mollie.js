@@ -1,33 +1,27 @@
 import mollieClient from '@mollie/api-client';
-
 const mollie = mollieClient({ apiKey: process.env.MOLLIE_API_KEY });
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const paymentId = req.body.id;
-
   if (!paymentId) {
-    console.error('Webhook ontvangen zonder payment ID');
+    console.error('❌ Geen payment ID ontvangen');
     return res.status(400).end();
   }
 
   try {
     const payment = await mollie.payments.get(paymentId);
-
     console.log('✅ Webhook ontvangen voor betaling:', payment.id);
     console.log('Metadata:', payment.metadata);
 
-    if (payment.isPaid() && payment.sequenceType === 'first') {
+    if (payment.isPaid && payment.sequenceType === 'first') {
       const { producten, email, name, totaal } = payment.metadata || {};
 
       if (!producten || !email || !name || !totaal) {
-        console.warn('❌ Onvolledige metadata bij betaling:', payment.id);
-        return res.status(400).end();
+        console.warn('⚠️ Incomplete metadata bij betaling:', payment.id);
+        return res.status(200).end(); // Stop maar zonder foutmelding
       }
-
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() + 7); // start over 7 dagen
 
       await mollie.customers_subscriptions.create({
         customerId: payment.customerId,
@@ -35,21 +29,21 @@ export default async function handler(req, res) {
           currency: 'EUR',
           value: parseFloat(totaal).toFixed(2),
         },
-        interval: '1 month',
-        startDate: startDate.toISOString().split('T')[0], // YYYY-MM-DD
+        interval: '1 week',
+        startDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Start 1 week na eerste betaling
         description: `Abonnement: ${producten.map(p => p.name).join(', ')}`,
         webhookUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhook-mollie`,
-        metadata: { email, name, producten },
+        metadata: { email, producten },
       });
 
-      console.log('✅ Abonnement aangemaakt met startdatum:', startDate.toISOString().split('T')[0]);
+      console.log('✅ Abonnement succesvol aangemaakt voor:', email);
     } else {
-      console.log('ℹ️ Geen abonnement aangemaakt — betaling niet betaald of geen eerste betaling');
+      console.log('ℹ️ Geen abonnement aangemaakt — betaling niet succesvol of geen "first" betaling');
     }
 
     res.status(200).end();
-  } catch (error) {
-    console.error('❌ Webhook fout:', error);
+  } catch (err) {
+    console.error('❌ Webhook fout:', err);
     res.status(500).end();
   }
 }
