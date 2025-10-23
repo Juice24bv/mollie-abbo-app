@@ -11,6 +11,7 @@ export default function Dashboard() {
   const [selected, setSelected] = useState([]);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [akkoord, setAkkoord] = useState(false);
 
   const toggleSelect = (pakket) => {
     setSelected((prev) =>
@@ -24,15 +25,15 @@ export default function Dashboard() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !name || selected.length === 0) {
-      alert('Vul je naam, e-mail en kies minstens één pakket.');
+    if (!email || !name || selected.length === 0 || !akkoord) {
+      alert('Vul alles correct in en geef akkoord op SEPA-incasso.');
       return;
     }
 
     const res = await fetch('/api/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, name, producten: selected, totaal }),
+      body: JSON.stringify({ email, name, producten: selected, totaal, akkoord }),
     });
 
     const data = await res.json();
@@ -43,7 +44,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center py-10 px-4">
       <div className="w-full max-w-2xl bg-white rounded-xl shadow-lg p-8 space-y-6">
-        <h1 className="text-3xl font-bold text-center text-gray-800">Abonnement afsluiten</h1>
+        <h1 className="text-3xl font-bold text-center text-gray-800">Abonnement bij Juice24 B.V.</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -52,7 +53,7 @@ export default function Dashboard() {
               placeholder="Naam"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="border border-gray-300 rounded px-4 py-2"
               required
             />
             <input
@@ -60,19 +61,19 @@ export default function Dashboard() {
               placeholder="E-mailadres"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="border border-gray-300 rounded px-4 py-2"
               required
             />
           </div>
 
-          <div className="space-y-4">
-            <p className="font-medium text-gray-700">Kies je pakket(ten):</p>
+          <div>
+            <p className="mb-2 font-medium text-gray-700">Kies je pakket(ten):</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {pakketten.map((pakket) => (
                 <label
                   key={pakket.id}
                   onClick={() => toggleSelect(pakket)}
-                  className={`border rounded-xl p-4 cursor-pointer transition hover:shadow ${
+                  className={`border rounded-xl p-4 cursor-pointer ${
                     selected.some(p => p.id === pakket.id)
                       ? 'border-blue-600 bg-blue-50'
                       : 'border-gray-300 bg-white'
@@ -85,12 +86,26 @@ export default function Dashboard() {
             </div>
           </div>
 
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="akkoord"
+              checked={akkoord}
+              onChange={() => setAkkoord(!akkoord)}
+              className="mr-2"
+              required
+            />
+            <label htmlFor="akkoord" className="text-sm text-gray-700">
+              Ik geef akkoord voor automatische SEPA-incasso en bevestig dat ik Juice24 B.V. machtig.
+            </label>
+          </div>
+
           <div className="flex justify-between items-center pt-4 border-t">
             <span className="text-lg font-semibold">Totaal: €{totaal.toFixed(2)}</span>
             <button
               type="submit"
-              className="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition"
-              disabled={!email || !name || selected.length === 0}
+              className="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700"
+              disabled={!email || !name || selected.length === 0 || !akkoord}
             >
               Afrekenen
             </button>
