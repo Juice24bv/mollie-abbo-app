@@ -11,7 +11,7 @@ export default function Dashboard() {
   const [selected, setSelected] = useState([]);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [akkoord, setAkkoord] = useState(false);
+  const [consent, setConsent] = useState(false);
 
   const toggleSelect = (pakket) => {
     setSelected((prev) =>
@@ -21,30 +21,36 @@ export default function Dashboard() {
     );
   };
 
-  const totaal = selected.reduce((acc, p) => acc + p.price, 0);
+  const subtotal = selected.reduce((acc, p) => acc + p.price, 0);
+  const statiegeld = selected.length * 0.9;
+  const verzendkosten = subtotal + statiegeld < 75 && selected.length > 0 ? 6.95 : 0;
+  const totaal = subtotal + statiegeld + verzendkosten;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !name || selected.length === 0 || !akkoord) {
-      alert('Vul alles correct in en geef akkoord op SEPA-incasso.');
+    if (!email || !name || selected.length === 0 || !consent) {
+      alert('Vul alle velden in en geef akkoord voor automatische incasso.');
       return;
     }
 
     const res = await fetch('/api/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, name, producten: selected, totaal, akkoord }),
+      body: JSON.stringify({ email, name, producten: selected, totaal }),
     });
 
     const data = await res.json();
-    if (data.checkoutUrl) window.location.href = data.checkoutUrl;
-    else alert('Fout bij starten betaling');
+    if (data.checkoutUrl) {
+      window.location.href = data.checkoutUrl;
+    } else {
+      alert('Fout bij starten betaling.');
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center py-10 px-4">
       <div className="w-full max-w-2xl bg-white rounded-xl shadow-lg p-8 space-y-6">
-        <h1 className="text-3xl font-bold text-center text-gray-800">Abonnement bij Juice24 B.V.</h1>
+        <h1 className="text-3xl font-bold text-center text-gray-800">Abonnement afsluiten</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -53,7 +59,7 @@ export default function Dashboard() {
               placeholder="Naam"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="border border-gray-300 rounded px-4 py-2"
+              className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
             <input
@@ -61,19 +67,19 @@ export default function Dashboard() {
               placeholder="E-mailadres"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="border border-gray-300 rounded px-4 py-2"
+              className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
 
-          <div>
-            <p className="mb-2 font-medium text-gray-700">Kies je pakket(ten):</p>
+          <div className="space-y-4">
+            <p className="font-medium text-gray-700">Kies je pakket(ten):</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {pakketten.map((pakket) => (
                 <label
                   key={pakket.id}
                   onClick={() => toggleSelect(pakket)}
-                  className={`border rounded-xl p-4 cursor-pointer ${
+                  className={`border rounded-xl p-4 cursor-pointer transition hover:shadow ${
                     selected.some(p => p.id === pakket.id)
                       ? 'border-blue-600 bg-blue-50'
                       : 'border-gray-300 bg-white'
@@ -86,26 +92,31 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="flex items-center">
+          <div className="text-gray-700 space-y-1">
+            <p>Producten: €{subtotal.toFixed(2)}</p>
+            <p>Statiegeld: €{statiegeld.toFixed(2)}</p>
+            <p>Verzendkosten: €{verzendkosten.toFixed(2)}</p>
+            <p className="font-bold text-lg">Totaal: €{totaal.toFixed(2)}</p>
+          </div>
+
+          <div className="flex items-start space-x-2">
             <input
               type="checkbox"
-              id="akkoord"
-              checked={akkoord}
-              onChange={() => setAkkoord(!akkoord)}
-              className="mr-2"
+              checked={consent}
+              onChange={(e) => setConsent(e.target.checked)}
+              className="mt-1"
               required
             />
-            <label htmlFor="akkoord" className="text-sm text-gray-700">
-              Ik geef akkoord voor automatische SEPA-incasso en bevestig dat ik Juice24 B.V. machtig.
+            <label className="text-sm text-gray-600">
+              Ik geef <strong>Juice24 B.V.</strong> toestemming voor automatische incasso en ga akkoord met de SEPA-voorwaarden.
             </label>
           </div>
 
-          <div className="flex justify-between items-center pt-4 border-t">
-            <span className="text-lg font-semibold">Totaal: €{totaal.toFixed(2)}</span>
+          <div className="flex justify-end pt-4 border-t">
             <button
               type="submit"
-              className="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700"
-              disabled={!email || !name || selected.length === 0 || !akkoord}
+              className="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition"
+              disabled={!email || !name || selected.length === 0 || !consent}
             >
               Afrekenen
             </button>
@@ -115,3 +126,4 @@ export default function Dashboard() {
     </div>
   );
 }
+``
