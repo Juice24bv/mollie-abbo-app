@@ -1,10 +1,10 @@
 import { useState } from 'react';
 
 const pakketten = [
-  { id: 'FRUITFULL_COMBI', name: 'FRUITFULL COMBI', price: 18.84 },
-  { id: 'HEALTHY_CHOICE', name: 'HEALTHY CHOICE', price: 18.84 },
-  { id: 'RAINBOW_MIX', name: 'RAINBOW MIX', price: 18.84 },
-  { id: 'STRONG_PACKAGE', name: 'STRONG PACKAGE', price: 18.84 },
+  { id: 'FRUITFULL_COMBI', name: 'FRUITFULL COMBI', price: 18.84, statiegeld: 0.9 },
+  { id: 'HEALTHY_CHOICE', name: 'HEALTHY CHOICE', price: 18.84, statiegeld: 0 },
+  { id: 'RAINBOW_MIX', name: 'RAINBOW MIX', price: 18.84, statiegeld: 0.75 },
+  { id: 'STRONG_PACKAGE', name: 'STRONG PACKAGE', price: 18.84, statiegeld: 0.75 },
 ];
 
 export default function Dashboard() {
@@ -21,15 +21,15 @@ export default function Dashboard() {
     );
   };
 
-  const statiegeld = selected.length * 0.90;
-  const subtotal = selected.reduce((sum, p) => sum + p.price, 0);
-  const verzending = subtotal < 75 && subtotal > 0 ? 6.95 : 0;
-  const totaal = subtotal + statiegeld + verzending;
+  const subtotal = selected.reduce((acc, p) => acc + p.price, 0);
+  const statiegeld = selected.reduce((acc, p) => acc + p.statiegeld, 0);
+  const verzendkosten = subtotal < 75 ? 6.95 : 0;
+  const totaal = subtotal + statiegeld + verzendkosten;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !name || selected.length === 0 || !akkoord) {
-      alert('Vul alles in en ga akkoord met automatische incasso.');
+      alert('Vul alle velden in en geef akkoord voor automatische incasso.');
       return;
     }
 
@@ -83,41 +83,41 @@ export default function Dashboard() {
                   }`}
                 >
                   <h2 className="text-lg font-semibold">{pakket.name}</h2>
-                  <p className="text-gray-600">€{pakket.price.toFixed(2)}</p>
+                  <p className="text-gray-600">Prijs: €{pakket.price.toFixed(2)}</p>
+                  <p className="text-gray-500 text-sm">Statiegeld: €{pakket.statiegeld.toFixed(2)}</p>
                 </label>
               ))}
             </div>
           </div>
 
-          <label className="flex items-start gap-2 bg-gray-50 border rounded-lg p-3">
+          <div className="text-sm text-gray-600 space-y-1">
+            <p>Subtotaal: €{subtotal.toFixed(2)}</p>
+            <p>Statiegeld: €{statiegeld.toFixed(2)}</p>
+            {verzendkosten > 0 && <p>Verzendkosten: €{verzendkosten.toFixed(2)}</p>}
+            <p className="text-lg font-bold mt-2">Totaal: €{totaal.toFixed(2)}</p>
+          </div>
+
+          <label className="flex items-start space-x-2 text-sm text-gray-700">
             <input
               type="checkbox"
               checked={akkoord}
               onChange={(e) => setAkkoord(e.target.checked)}
-              className="mt-1 w-5 h-5 flex-shrink-0"
+              className="mt-1"
             />
-            <span className="text-sm text-gray-700 leading-snug">
-              Door deze betaling te doen, geef je <strong>Juice24 B.V.</strong> toestemming om toekomstige betalingen automatisch via SEPA-incasso af te schrijven.
-              Je kunt deze toestemming op elk moment intrekken.
+            <span>
+              Door deze betaling te doen, geef je <strong>Juice24 b.v.</strong> toestemming om
+              toekomstige betalingen automatisch via SEPA-incasso af te schrijven. Je kunt deze
+              toestemming op elk moment intrekken. (IP en tijd worden geregistreerd)
             </span>
           </label>
 
-          <div className="text-sm text-gray-500 space-y-1">
-            <p>Producten: €{subtotal.toFixed(2)}</p>
-            <p>Statiegeld: €{statiegeld.toFixed(2)}</p>
-            {verzending > 0 && <p>Verzendkosten: €{verzending.toFixed(2)}</p>}
-            <p className="text-lg font-semibold text-gray-800">Totaal: €{totaal.toFixed(2)}</p>
-          </div>
-
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
-              disabled={!email || !name || selected.length === 0 || !akkoord}
-            >
-              Afrekenen
-            </button>
-          </div>
+          <button
+            type="submit"
+            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition w-full"
+            disabled={!email || !name || selected.length === 0 || !akkoord}
+          >
+            Afrekenen
+          </button>
         </form>
       </div>
     </div>
