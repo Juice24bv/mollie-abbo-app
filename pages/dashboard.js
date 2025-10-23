@@ -1,32 +1,50 @@
-export default function Dashboard() {
-  return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
-      <form className="bg-white p-8 rounded-xl shadow-md w-full max-w-lg space-y-4">
-        <h1 className="text-2xl font-bold text-center">Kies je abonnement</h1>
+import mollieClient from '@mollie/api-client';
+const mollie = mollieClient({ apiKey: process.env.MOLLIE_API_KEY });
 
-        <div>
-          <label className="block mb-1 font-medium">Naam</label>
-          <input type="text" name="name" required className="w-full border px-3 py-2 rounded-md" />
-        </div>
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).end();
 
-        <div>
-          <label className="block mb-1 font-medium">E-mailadres</label>
-          <input type="email" name="email" required className="w-full border px-3 py-2 rounded-md" />
-        </div>
+  const { name, email, producten } = req.body;
 
-        <div>
-          <label className="block mb-1 font-medium">Producten</label>
-          <select name="producten" className="w-full border px-3 py-2 rounded-md">
-            <option value="FRUITFULL_COMBI">Fruitfull Combi</option>
-            <option value="HEALTHY_CHOICE">Healthy Choice</option>
-            <option value="RAINBOW_MIX">Rainbow Mix</option>
-          </select>
-        </div>
+  if (!name || !email || !producten || !Array.isArray(producten) || producten.length === 0) {
+    return res.status(400).json({ error: 'Ongeldige of ontbrekende invoer' });
+  }
 
-        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700">
-          Start betaling
-        </button>
-      </form>
-    </div>
-  );
+  // Prijs per product (bijv. €18,84) — aangepast aan jouw producten
+  const prijsPerStuk = 18.84;
+
+  const totaal = prijsPerStuk * producten.length;
+
+  try {
+    const customer = await mollie.customers.create({ name, email });
+
+    const payment = await mollie.payments.create({
+      amount: {
+        currency: 'EUR',
+        value: totaal.toFixed(2)
+      },
+      customerId: customer.id,
+      sequenceType: 'first',
+      method: 'ideal',
+      description: `Abonnement: ${producten.join(', ')}`,
+      redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/confirmed`,
+      webhookUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhook-mollie`,
+      metadata: {
+        producten: producten.map(p => ({
+          id: p,
+          name: p,
+          price: prijsPerStuk,
+          quantity: 1
+        })),
+        email,
+        name,
+        totaal
+      }
+    });
+
+    res.status(200).json({ checkoutUrl: payment.getCheckoutUrl() });
+  } catch (error) {
+    console.error('Mollie API fout:', error);
+    res.status(500).json({ error: 'Fout bij aanmaken betaling' });
+  }
 }
